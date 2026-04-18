@@ -3,7 +3,14 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from backend.config import get_settings
+
 DB_PATH = Path(__file__).resolve().parent.parent / "database" / "predictive_maintenance.db"
+
+
+def _is_postgres_enabled() -> bool:
+    settings = get_settings()
+    return bool(settings.database_url and settings.database_url.startswith("postgres"))
 
 
 def _column_exists(connection: sqlite3.Connection, table: str, column: str) -> bool:
@@ -13,6 +20,37 @@ def _column_exists(connection: sqlite3.Connection, table: str, column: str) -> b
 
 def init_db() -> None:
     """Initialize SQLite database and predictions table."""
+    settings = get_settings()
+    if _is_postgres_enabled():
+        from psycopg import connect
+
+        with connect(settings.database_url) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS predictions (
+                        id SERIAL PRIMARY KEY,
+                        machine_id TEXT NOT NULL,
+                        temperature DOUBLE PRECISION NOT NULL,
+                        vibration DOUBLE PRECISION NOT NULL,
+                        pressure DOUBLE PRECISION NOT NULL,
+                        prediction INTEGER NOT NULL,
+                        probability DOUBLE PRECISION NOT NULL,
+                        alert BOOLEAN NOT NULL,
+                        risk_level TEXT NOT NULL DEFAULT 'safe',
+                        timestamp TEXT NOT NULL
+                    )
+                    """
+                )
+                cursor.execute(
+                    """
+                    ALTER TABLE predictions
+                    ADD COLUMN IF NOT EXISTS risk_level TEXT NOT NULL DEFAULT 'safe'
+                    """
+                )
+            connection.commit()
+        return
+
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     with sqlite3.connect(DB_PATH) as connection:
@@ -42,6 +80,35 @@ def init_db() -> None:
 
 def insert_prediction(record: dict) -> None:
     """Store one prediction record."""
+    settings = get_settings()
+    if _is_postgres_enabled():
+        from psycopg import connect
+
+        with connect(settings.database_url) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO predictions (
+                        machine_id, temperature, vibration, pressure,
+                        prediction, probability, alert, risk_level, timestamp
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        record["machine_id"],
+                        record["temperature"],
+                        record["vibration"],
+                        record["pressure"],
+                        record["prediction"],
+                        record["probability"],
+                        bool(record["alert"]),
+                        record.get("risk_level", "safe"),
+                        record["timestamp"],
+                    ),
+                )
+            connection.commit()
+        return
+
     with sqlite3.connect(DB_PATH) as connection:
         connection.execute(
             """
@@ -68,6 +135,26 @@ def insert_prediction(record: dict) -> None:
 
 def get_history(limit: int = 100) -> list[dict]:
     """Fetch prediction history ordered by most recent."""
+    settings = get_settings()
+    if _is_postgres_enabled():
+        from psycopg import connect
+        from psycopg.rows import dict_row
+
+        with connect(settings.database_url, row_factory=dict_row) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT machine_id, temperature, vibration, pressure,
+                           prediction, probability, alert, risk_level, timestamp
+                    FROM predictions
+                    ORDER BY timestamp DESC
+                    LIMIT %s
+                    """,
+                    (limit,),
+                )
+                rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+
     with sqlite3.connect(DB_PATH) as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
@@ -86,6 +173,28 @@ def get_history(limit: int = 100) -> list[dict]:
 
 def get_recent_machine_readings(machine_id: str, limit: int = 5) -> list[dict]:
     """Fetch recent readings for one machine ordered oldest to newest."""
+    settings = get_settings()
+    if _is_postgres_enabled():
+        from psycopg import connect
+        from psycopg.rows import dict_row
+
+        with connect(settings.database_url, row_factory=dict_row) as connection:
+            with connection.cursor() as cursor:
+                cursor.execute(
+                    """
+                    SELECT machine_id, temperature, vibration, pressure, timestamp
+                    FROM predictions
+                    WHERE machine_id = %s
+                    ORDER BY timestamp DESC
+                    LIMIT %s
+                    """,
+                    (machine_id, limit),
+                )
+                rows = cursor.fetchall()
+        ordered = [dict(row) for row in rows]
+        ordered.reverse()
+        return ordered
+
     with sqlite3.connect(DB_PATH) as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -22,6 +23,11 @@ def main() -> None:
     parser.add_argument("--interval", type=float, default=3.0, help="Seconds between sensor events")
     parser.add_argument("--machines", type=int, default=5, help="Number of machines to simulate")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
+    parser.add_argument(
+        "--api-key",
+        default=os.getenv("API_KEY", ""),
+        help="Optional API key sent as X-API-Key header",
+    )
     args = parser.parse_args()
 
     rng = np.random.default_rng(args.seed)
@@ -29,6 +35,8 @@ def main() -> None:
 
     print("Starting simulator. Press Ctrl+C to stop.")
     print(f"Target API: {args.api}")
+    if args.api_key:
+        print("Using API key authentication")
 
     try:
         while True:
@@ -36,7 +44,8 @@ def main() -> None:
             payload = generate_realtime_sample(machine_id=machine_id, rng=rng)
 
             try:
-                response = requests.post(args.api, json=payload, timeout=8)
+                headers = {"X-API-Key": args.api_key} if args.api_key else {}
+                response = requests.post(args.api, json=payload, headers=headers, timeout=8)
                 response.raise_for_status()
                 result = response.json()
                 print(
