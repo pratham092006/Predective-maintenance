@@ -15,7 +15,7 @@ It includes:
 - pandas, numpy, scikit-learn
 - FastAPI + Uvicorn
 - Streamlit + Plotly
-- SQLite
+- SQLite (local) / PostgreSQL (production)
 
 ## Project Structure
 
@@ -88,6 +88,12 @@ Backend URL:
 python simulator/simulate_sensor_stream.py
 ```
 
+If backend auth is enabled, pass API key:
+
+```powershell
+python simulator/simulate_sensor_stream.py --api-key <your-api-key>
+```
+
 ### 6) Start Streamlit dashboard
 
 ```powershell
@@ -148,6 +154,20 @@ pytest -q
 
 ## Notes
 
-- The project currently uses SQLite (`database/predictive_maintenance.db`).
+- SQLite is used locally by default (`database/predictive_maintenance.db`).
+- For production, set `DATABASE_URL` to PostgreSQL and configure `CORS_ORIGINS`.
+- Optional API-key auth is enabled automatically when `API_KEY` is set.
 - Model artifact and generated training files are ignored in git.
-- If you want production deployment, add auth, switch to a managed DB, and run backend/frontend as services.
+
+## Deployment
+
+Complete deployment instructions are available in `DEPLOYMENT.md`, including:
+
+- Docker Compose stack (backend + frontend + Postgres)
+- environment variables and secrets handling
+- CORS/auth configuration
+- CI workflow details
+
+For a managed cloud setup with Railway + Supabase + Streamlit, use:
+
+- `RAILWAY_SUPABASE_STREAMLIT.md`

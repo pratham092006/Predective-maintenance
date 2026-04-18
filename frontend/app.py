@@ -11,6 +11,7 @@ import requests
 import streamlit as st
 
 DEFAULT_API_BASE = os.getenv("API_BASE_URL", "http://127.0.0.1:8000")
+DEFAULT_API_KEY = os.getenv("API_KEY", "")
 RISK_ORDER = ["safe", "warning", "critical"]
 RISK_COLORS = {
     "safe": "#2EC27E",
@@ -380,8 +381,17 @@ def classify_risk(probability: float) -> str:
     return "critical"
 
 
-def fetch_history(api_base: str, limit: int = 200) -> pd.DataFrame:
-    response = requests.get(f"{api_base}/history", params={"limit": limit}, timeout=8)
+def _request_headers(api_key: str) -> dict[str, str]:
+    return {"X-API-Key": api_key} if api_key else {}
+
+
+def fetch_history(api_base: str, api_key: str, limit: int = 200) -> pd.DataFrame:
+    response = requests.get(
+        f"{api_base}/history",
+        params={"limit": limit},
+        headers=_request_headers(api_key),
+        timeout=8,
+    )
     response.raise_for_status()
     data = response.json()
     if not data:
@@ -397,17 +407,22 @@ def fetch_history(api_base: str, limit: int = 200) -> pd.DataFrame:
     return frame
 
 
-def fetch_api_health(api_base: str) -> tuple[dict[str, Any] | None, str | None]:
+def fetch_api_health(api_base: str, api_key: str) -> tuple[dict[str, Any] | None, str | None]:
     try:
-        response = requests.get(f"{api_base}/", timeout=5)
+        response = requests.get(f"{api_base}/", headers=_request_headers(api_key), timeout=5)
         response.raise_for_status()
         return response.json(), None
     except requests.RequestException as exc:
         return None, str(exc)
 
 
-def send_prediction(api_base: str, payload: dict[str, Any]) -> dict[str, Any]:
-    response = requests.post(f"{api_base}/predict", json=payload, timeout=8)
+def send_prediction(api_base: str, payload: dict[str, Any], api_key: str) -> dict[str, Any]:
+    response = requests.post(
+        f"{api_base}/predict",
+        json=payload,
+        headers=_request_headers(api_key),
+        timeout=8,
+    )
     response.raise_for_status()
     return response.json()
 
@@ -422,7 +437,7 @@ def show_risk_banner(risk_level: str, advisory: str) -> None:
         st.success(f"SAFE: {message}")
 
 
-def predict_uploaded_dataframe(api_base: str, dataframe: pd.DataFrame) -> pd.DataFrame:
+def predict_uploaded_dataframe(api_base: str, api_key: str, dataframe: pd.DataFrame) -> pd.DataFrame:
     results: list[dict[str, Any]] = []
     progress = st.progress(0, text="Starting batch inference...")
     total = len(dataframe)
@@ -436,7 +451,7 @@ def predict_uploaded_dataframe(api_base: str, dataframe: pd.DataFrame) -> pd.Dat
             "pressure": float(row["pressure"]),
         }
         try:
-            prediction = send_prediction(api_base=api_base, payload=payload)
+            prediction = send_prediction(api_base=api_base, payload=payload, api_key=api_key)
             results.append(prediction)
         except (ValueError, TypeError, requests.RequestException) as exc:
             results.append(
@@ -562,11 +577,11 @@ def render_executive_strip(history_df: pd.DataFrame) -> None:
     st.plotly_chart(spark, width="stretch")
 
 
-def render_live_monitoring(api_base: str, history_limit: int) -> None:
+def render_live_monitoring(api_base: str, api_key: str, history_limit: int) -> None:
     st.subheader("Live Monitoring")
 
     try:
-        history_df = fetch_history(api_base=api_base, limit=history_limit)
+        history_df = fetch_history(api_base=api_base, api_key=api_key, limit=history_limit)
     except requests.RequestException as exc:
         st.error(f"Could not load history: {exc}")
         return
@@ -621,7 +636,7 @@ def render_live_monitoring(api_base: str, history_limit: int) -> None:
     st.plotly_chart(risk_fig, width="stretch")
 
 
-def render_manual_prediction(api_base: str) -> None:
+def render_manual_prediction(api_base: str, api_key: str) -> None:
     st.subheader("Manual Prediction")
     st.caption("Try custom sensor values and inspect model output instantly.")
 
@@ -648,7 +663,7 @@ def render_manual_prediction(api_base: str) -> None:
     }
 
     try:
-        result = send_prediction(api_base=api_base, payload=payload)
+        result = send_prediction(api_base=api_base, payload=payload, api_key=api_key)
     except requests.RequestException as exc:
         st.error(f"Prediction request failed: {exc}")
         return
@@ -684,7 +699,7 @@ def render_manual_prediction(api_base: str) -> None:
     st.json(result)
 
 
-def render_upload_dataset(api_base: str) -> None:
+def render_upload_dataset(api_base: str, api_key: str) -> None:
     st.subheader("Upload Dataset")
     st.caption("Upload a CSV and run backend inference on every row.")
 
@@ -716,7 +731,7 @@ def render_upload_dataset(api_base: str) -> None:
         return
 
     scoring_df = uploaded_df.head(row_limit).copy()
-    result_df = predict_uploaded_dataframe(api_base=api_base, dataframe=scoring_df)
+    result_df = predict_uploaded_dataframe(api_base=api_base, api_key=api_key, dataframe=scoring_df)
 
     risk_counts = result_df["risk_level"].value_counts(dropna=False).rename_axis("risk_level").reset_index(name="count")
     risk_counts["risk_level"] = risk_counts["risk_level"].astype(str)
@@ -764,10 +779,10 @@ def render_upload_dataset(api_base: str) -> None:
     )
 
 
-def render_machine_analytics(api_base: str, history_limit: int) -> None:
+def render_machine_analytics(api_base: str, api_key: str, history_limit: int) -> None:
     st.subheader("Machine Analytics")
     try:
-        history_df = fetch_history(api_base=api_base, limit=history_limit)
+        history_df = fetch_history(api_base=api_base, api_key=api_key, limit=history_limit)
     except requests.RequestException as exc:
         st.error(f"Could not load analytics data: {exc}")
         return
@@ -850,6 +865,7 @@ apply_theme()
 with st.sidebar:
     st.header("Control Center")
     api_base = st.text_input("API Base URL", value=DEFAULT_API_BASE, key="cfg_api_base").strip().rstrip("/")
+    api_key = st.text_input("API Key (optional)", value=DEFAULT_API_KEY, type="password", key="cfg_api_key").strip()
     mode = st.selectbox(
         "Select Mode",
         options=["Live Monitoring", "Manual Prediction", "Upload Dataset", "Machine Analytics"],
@@ -871,7 +887,7 @@ with st.sidebar:
 if auto_refresh and mode == "Live Monitoring":
     st.caption(f"Auto-refresh active: updating every {refresh_seconds}s without full page reload.")
 
-health, health_error = fetch_api_health(api_base)
+health, health_error = fetch_api_health(api_base=api_base, api_key=api_key)
 system_status = "RUNNING" if health else "OFFLINE"
 model_loaded = bool(health.get("model_loaded", False)) if health else False
 model_status = "LOADED" if model_loaded else "NOT LOADED"
@@ -911,20 +927,20 @@ if not health:
 summary_history = pd.DataFrame()
 if health:
     try:
-        summary_history = fetch_history(api_base=api_base, limit=min(history_limit, 600))
+        summary_history = fetch_history(api_base=api_base, api_key=api_key, limit=min(history_limit, 600))
     except requests.RequestException:
         summary_history = pd.DataFrame()
 
 render_executive_strip(summary_history)
 
 if mode == "Live Monitoring":
-    render_live_monitoring(api_base=api_base, history_limit=history_limit)
+    render_live_monitoring(api_base=api_base, api_key=api_key, history_limit=history_limit)
 elif mode == "Manual Prediction":
-    render_manual_prediction(api_base=api_base)
+    render_manual_prediction(api_base=api_base, api_key=api_key)
 elif mode == "Upload Dataset":
-    render_upload_dataset(api_base=api_base)
+    render_upload_dataset(api_base=api_base, api_key=api_key)
 else:
-    render_machine_analytics(api_base=api_base, history_limit=history_limit)
+    render_machine_analytics(api_base=api_base, api_key=api_key, history_limit=history_limit)
 
 if auto_refresh and mode == "Live Monitoring":
     # Use Streamlit rerun cycle instead of browser-level reload to avoid screen flash.

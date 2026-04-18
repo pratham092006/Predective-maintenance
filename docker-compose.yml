@@ -1,0 +1,52 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: pm-postgres
+    environment:
+      POSTGRES_USER: pm_user
+      POSTGRES_PASSWORD: pm_password
+      POSTGRES_DB: predictive_maintenance
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pm_user -d predictive_maintenance"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: pm-backend
+    environment:
+      APP_ENV: production
+      DATABASE_URL: postgresql://pm_user:pm_password@postgres:5432/predictive_maintenance
+      CORS_ORIGINS: http://localhost:8501
+      API_KEY: ${API_KEY:-}
+      MODEL_PATH: /app/ml/model.pkl
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    container_name: pm-frontend
+    environment:
+      API_BASE_URL: http://backend:8000
+      API_KEY: ${API_KEY:-}
+    depends_on:
+      - backend
+    ports:
+      - "8501:8501"
+
+volumes:
+  postgres_data:

@@ -4,9 +4,10 @@ from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 
+from backend.config import get_settings
 from backend.db import get_history, get_recent_machine_readings, init_db, insert_prediction
 from backend.schemas import HealthResponse, HistoryItem, PredictionOutput, SensorInput
 from ml.model_utils import load_model, predict_sample
@@ -14,6 +15,7 @@ from ml.model_utils import load_model, predict_sample
 SAFE_THRESHOLD = 0.30
 CRITICAL_THRESHOLD = 0.70
 MODEL = None
+SETTINGS = get_settings()
 
 
 def classify_risk(probability: float) -> str:
@@ -44,10 +46,18 @@ async def lifespan(_app: FastAPI):
     global MODEL
     init_db()
     try:
-        MODEL = load_model()
+        MODEL = load_model(path=SETTINGS.model_path)
     except FileNotFoundError:
         MODEL = None
     yield
+
+
+def require_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> None:
+    expected = SETTINGS.api_key
+    if not expected:
+        return
+    if x_api_key != expected:
+        raise HTTPException(status_code=401, detail="Unauthorized")
 
 
 app = FastAPI(
@@ -58,7 +68,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=SETTINGS.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -71,7 +81,7 @@ def health_check() -> HealthResponse:
 
 
 @app.post("/predict", response_model=PredictionOutput)
-def predict(payload: SensorInput) -> PredictionOutput:
+def predict(payload: SensorInput, _auth: None = Depends(require_api_key)) -> PredictionOutput:
     if MODEL is None:
         raise HTTPException(
             status_code=503,
@@ -121,6 +131,9 @@ def predict(payload: SensorInput) -> PredictionOutput:
 
 
 @app.get("/history", response_model=list[HistoryItem])
-def history(limit: int = Query(default=100, ge=1, le=1000)) -> list[HistoryItem]:
+def history(
+    limit: int = Query(default=100, ge=1, le=1000),
+    _auth: None = Depends(require_api_key),
+) -> list[HistoryItem]:
     rows = get_history(limit=limit)
     return [HistoryItem(**row) for row in rows]
