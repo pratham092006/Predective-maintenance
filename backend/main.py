@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import Depends, FastAPI, HTTPException, Header, Query
+import numpy as np
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -21,34 +22,33 @@ SETTINGS = get_settings()
 logger = logging.getLogger(__name__)
 
 
-def _train_runtime_fallback_model() -> Any:
-    """Train a lightweight fallback model when artifact file is missing."""
-    from sklearn.ensemble import RandomForestClassifier
+class HeuristicFallbackModel:
+    """Minimal sklearn-like model used when serialized artifact is unavailable."""
 
-    from ml.data_generator import create_training_dataset
-    from ml.model_utils import FEATURE_COLUMNS, build_features_frame
+    def predict_proba(self, X: np.ndarray) -> np.ndarray:
+        features = np.asarray(X, dtype=float)
+        temperature = features[:, 0]
+        vibration = features[:, 1]
+        pressure = features[:, 2]
 
-    training_data = create_training_dataset(n_samples=900, machine_count=4, seed=42)
-    engineered = build_features_frame(training_data)
-    X = engineered[FEATURE_COLUMNS]
-    y = engineered["failure"].astype(int)
+        temp_risk = np.maximum(0.0, (temperature - 79.0) / 18.0)
+        vib_risk = np.maximum(0.0, (vibration - 3.4) / 2.2)
+        pressure_risk = np.maximum(0.0, np.abs(pressure - 35.0) / 15.0)
+        interaction = temp_risk * vib_risk
 
-    fallback_model = RandomForestClassifier(
-        n_estimators=90,
-        max_depth=10,
-        min_samples_leaf=2,
-        class_weight="balanced_subsample",
-        random_state=42,
-        n_jobs=-1,
-    )
-    fallback_model.fit(X, y)
-    return fallback_model
+        failure_prob = 0.08 + 0.38 * temp_risk + 0.42 * vib_risk + 0.22 * pressure_risk + 0.45 * interaction
+        failure_prob = np.clip(failure_prob, 0.01, 0.99)
+        safe_prob = 1.0 - failure_prob
+        return np.column_stack((safe_prob, failure_prob))
+
+    def predict(self, X: np.ndarray) -> np.ndarray:
+        return (self.predict_proba(X)[:, 1] >= 0.5).astype(int)
 
 
 def _bootstrap_model_after_load_failure(reason: str) -> Any | None:
     """Best-effort model bootstrap to keep API usable on serverless deployments."""
     try:
-        model = _train_runtime_fallback_model()
+        model = HeuristicFallbackModel()
         logger.warning("Using runtime-bootstrap model because %s", reason)
         return model
     except Exception:
