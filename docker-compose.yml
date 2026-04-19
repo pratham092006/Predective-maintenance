@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16
@@ -26,7 +24,7 @@ services:
     environment:
       APP_ENV: production
       DATABASE_URL: postgresql://pm_user:pm_password@postgres:5432/predictive_maintenance
-      CORS_ORIGINS: http://localhost:8501
+      CORS_ORIGINS: http://localhost:8000
       API_KEY: ${API_KEY:-}
       MODEL_PATH: /app/ml/model.pkl
     depends_on:
@@ -34,19 +32,6 @@ services:
         condition: service_healthy
     ports:
       - "8000:8000"
-
-  frontend:
-    build:
-      context: .
-      dockerfile: frontend/Dockerfile
-    container_name: pm-frontend
-    environment:
-      API_BASE_URL: http://backend:8000
-      API_KEY: ${API_KEY:-}
-    depends_on:
-      - backend
-    ports:
-      - "8501:8501"
 
 volumes:
   postgres_data:

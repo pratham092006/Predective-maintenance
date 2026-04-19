@@ -1,59 +1,56 @@
-# Predictive Maintenance System
+# Predictive Maintenance
 
-A full-stack Python project that predicts machine failure risk from sensor readings.
+Modern predictive maintenance system with ML inference, FastAPI backend APIs, live simulator traffic, and an interactive JavaScript dashboard.
 
-It includes:
+## What This Project Includes
 
-- an ML training pipeline (`scikit-learn`)
-- a FastAPI backend for inference and history
-- a Streamlit dashboard for monitoring and analysis
-- a sensor simulator for live test data
+- Machine-risk prediction model built with scikit-learn
+- FastAPI backend with health, prediction, and history endpoints
+- SQLite local persistence with optional PostgreSQL (Supabase/Railway)
+- JavaScript dashboard served at /ui with live trend visualization
+- Sensor simulator for continuous synthetic telemetry
+- Docker Compose setup for backend plus Postgres
+- Vercel deployment adapter for API plus static UI routing
 
-## Tech Stack
+## Architecture
 
-- Python 3.13
-- pandas, numpy, scikit-learn
-- FastAPI + Uvicorn
-- Streamlit + Plotly
-- SQLite (local) / PostgreSQL (production)
+Data flow:
 
-## Project Structure
+1. Model is trained from synthetic data using ml/train_model.py
+2. Backend loads model artifact at startup
+3. Simulator or dashboard sends sensor readings to POST /predict
+4. Backend stores prediction history in DB
+5. Dashboard fetches GET /history for live cards and chart
+
+## Repository Structure
 
 ```text
 .
-├── backend/
-│   ├── db.py
-│   ├── main.py
-│   └── schemas.py
-├── database/
-├── frontend/
-│   └── app.py
-├── ml/
-│   ├── data_generator.py
-│   ├── model_utils.py
-│   ├── train_model.py
-│   ├── metrics.json            # generated
-│   └── training_data.csv       # generated
-├── simulator/
-│   └── simulate_sensor_stream.py
-├── tests/
-│   ├── test_api.py
-│   └── test_model.py
+├── api/                          # Vercel adapter entry
+├── backend/                      # FastAPI app, DB layer, config
+├── database/                     # Local sqlite file target
+├── frontend-js/                  # Dashboard UI (HTML/CSS/JS)
+├── ml/                           # Model training and utilities
+├── scripts/                      # PowerShell helper scripts
+├── simulator/                    # Live telemetry generator
+├── tests/                        # API and ML tests
+├── docker-compose.yml
 ├── requirements.txt
+├── vercel.json
 └── README.md
 ```
 
-## How It Works
+## Requirements
 
-1. Train a model from synthetic machine sensor data.
-2. Load the model in FastAPI for real-time prediction.
-3. Store prediction history in SQLite.
-4. Visualize live/system behavior in Streamlit.
-5. Optionally feed continuous sample data using the simulator.
+- Python 3.13+
+- pip
+- Optional: Docker Desktop (for containerized local stack)
 
-## Quick Start
+## Quick Start (Local)
 
-### 1) Create and activate virtual environment
+### 1) Create virtual environment
+
+PowerShell:
 
 ```powershell
 python -m venv .venv
@@ -66,7 +63,7 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### 3) Train the model
+### 3) Train model
 
 ```powershell
 python ml/train_model.py
@@ -75,99 +72,138 @@ python ml/train_model.py
 ### 4) Start backend
 
 ```powershell
-uvicorn backend.main:app --reload
+python -m uvicorn backend.main:app --reload
 ```
 
-Backend URL:
+- Health: http://127.0.0.1:8000/
+- API docs: http://127.0.0.1:8000/docs
+- Dashboard: http://127.0.0.1:8000/ui
 
-- `http://127.0.0.1:8000`
-
-### 5) Start simulator (optional, for live data)
+### 5) (Optional) Start simulator traffic
 
 ```powershell
 python simulator/simulate_sensor_stream.py
 ```
 
-If backend auth is enabled, pass API key:
+If API key auth is enabled:
 
 ```powershell
 python simulator/simulate_sensor_stream.py --api-key <your-api-key>
 ```
 
-### 6) Start Streamlit dashboard
+## Environment Variables
 
-```powershell
-streamlit run frontend/app.py
-```
+Use example files:
 
-Dashboard URL:
+- .env.example
+- .env.railway.backend.example
 
-- `http://localhost:8501`
+Important variables:
+
+- APP_ENV: development or production
+- DATABASE_URL: PostgreSQL DSN for managed DB usage
+- API_KEY: optional backend protection for /predict and /history
+- CORS_ORIGINS: comma-separated allowed frontend origins
+- MODEL_PATH: model artifact path (optional override)
+- LOG_LEVEL: logging verbosity
+
+If DATABASE_URL is not set, backend falls back to local SQLite path.
 
 ## API Endpoints
 
-- `GET /` : health check
-- `POST /predict` : predict failure risk from sensor input
-- `GET /history` : retrieve past predictions
+- GET /
+  - Health and model load status
+- GET /client-config
+  - Returns auth_required for frontend runtime behavior
+- POST /predict
+  - Predicts risk and stores reading
+- GET /history?limit=25
+  - Returns latest prediction records
 
-### Example `/predict` request body
-
-```json
-{
-	"temperature": 78.2,
-	"vibration": 0.44,
-	"pressure": 31.6,
-	"machine_id": "M-01"
-}
-```
-
-### Example response
+Sample predict request body:
 
 ```json
 {
-	"prediction": 0,
-	"probability": 0.19,
-	"risk_level": "safe",
-	"advisory": "No immediate action required"
+  "machine_id": "M-001",
+  "temperature": 78.2,
+  "vibration": 2.4,
+  "pressure": 31.5
 }
 ```
 
-## Dashboard Features
+## Run with Docker
 
-- Live monitoring mode with trend charts
-- Manual prediction mode
-- CSV upload and batch scoring
-- Machine analytics view
-- History-backed KPI metrics
+Start backend plus Postgres:
 
-## Risk Levels
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-docker.ps1
+```
 
-- `safe`: probability < 0.30
-- `warning`: 0.30 to 0.70
-- `critical`: probability > 0.70
+Rebuild first:
 
-## Running Tests
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\start-docker.ps1 -Rebuild
+```
+
+Stop stack:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\stop-docker.ps1
+```
+
+## Testing and Validation
+
+Run tests:
 
 ```powershell
 pytest -q
 ```
 
-## Notes
+Quick syntax validation:
 
-- SQLite is used locally by default (`database/predictive_maintenance.db`).
-- For production, set `DATABASE_URL` to PostgreSQL and configure `CORS_ORIGINS`.
-- Optional API-key auth is enabled automatically when `API_KEY` is set.
-- Model artifact and generated training files are ignored in git.
+```powershell
+python -m compileall backend ml simulator api tests
+```
 
-## Deployment
+## Security and Secrets
 
-Complete deployment instructions are available in `DEPLOYMENT.md`, including:
+- Do not commit real credentials in any file
+- Keep runtime secrets in deployment platform environment variables
+- This repo ignores:
+  - .env and .env.* (except *.example templates)
+  - common key and certificate file extensions
+  - local caches and temporary artifacts
 
-- Docker Compose stack (backend + frontend + Postgres)
-- environment variables and secrets handling
-- CORS/auth configuration
-- CI workflow details
+If a secret was ever committed:
 
-For a managed cloud setup with Railway + Supabase + Streamlit, use:
+1. Rotate the credential immediately
+2. Replace with a placeholder
+3. Rewrite history only when required by policy
 
-- `RAILWAY_SUPABASE_STREAMLIT.md`
+## Deployment Guides
+
+- DEPLOYMENT.md
+- VERCEL_DEPLOYMENT.md
+- RAILWAY_VERCEL_SUPABASE_DEPLOYMENT.md
+- RAILWAY_VERCEL_SUPABASE_CHECKLIST.md
+
+Recommended production topology:
+
+- Frontend: Vercel static hosting
+- Backend: Railway container deployment
+- Database: Supabase PostgreSQL
+
+## Troubleshooting
+
+- 401 Unauthorized
+  - Set matching API key in frontend settings if backend API_KEY is enabled
+- Empty dashboard history
+  - Verify backend is reachable and simulator is running
+- Model not loaded
+  - Re-run python ml/train_model.py and restart backend
+- CORS issues
+  - Update CORS_ORIGINS to include exact frontend origin
+
+## License
+
+Internal project or private-use repository unless specified otherwise.

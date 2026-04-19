@@ -2,7 +2,7 @@
 
 - [x] Clarify Project Requirements
   - Project type confirmed: Python predictive maintenance system.
-  - Stack confirmed: pandas, numpy, scikit-learn Random Forest, matplotlib, Streamlit.
+  - Stack confirmed: pandas, numpy, scikit-learn Random Forest, FastAPI, JavaScript dashboard.
 
 - [x] Scaffold the Project
   - Created project structure under current workspace root.
@@ -11,7 +11,7 @@
 - [x] Customize the Project
   - Implemented synthetic sensor data generation.
   - Implemented model training, artifact persistence, and prediction utilities.
-  - Implemented Streamlit dashboard for trends and predictions.
+  - Implemented JavaScript dashboard for trends and predictions.
 
 - [x] Install Required Extensions
   - No extension requirements found from project setup metadata.
@@ -22,11 +22,10 @@
   - Ran tests successfully.
 
 - [x] Create and Run Task
-  - Created VS Code task: Run Streamlit dashboard.
+  - Created VS Code task for local API/backend runs.
 
 - [x] Launch the Project
-  - Dashboard launch task started.
-  - Streamlit first-run onboarding prompt appeared (email optional; press Enter to continue).
+  - JavaScript dashboard served via FastAPI at `/ui`.
 
 - [x] Ensure Documentation is Complete
   - Verified README.md exists and includes setup/run/test instructions.
