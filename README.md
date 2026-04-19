@@ -159,6 +159,25 @@ Run tests:
 pytest -q
 ```
 
+Run one-command smoke check (local + production):
+
+```powershell
+python scripts/smoke_check.py
+```
+
+Common smoke-check options:
+
+```powershell
+# Production only
+python scripts/smoke_check.py --skip-local
+
+# Local only
+python scripts/smoke_check.py --skip-production
+
+# When API key auth is enabled
+python scripts/smoke_check.py --api-key <your-api-key>
+```
+
 Quick syntax validation:
 
 ```powershell
