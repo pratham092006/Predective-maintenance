@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -17,6 +18,15 @@ def _is_postgres_enabled() -> bool:
 
 def _sqlite_db_path() -> str:
     return str(DB_PATH)
+
+
+@contextmanager
+def _sqlite_connection() -> sqlite3.Connection:
+    connection = sqlite3.connect(_sqlite_db_path())
+    try:
+        yield connection
+    finally:
+        connection.close()
 
 
 def _create_postgres_indexes(cursor: Any) -> None:
@@ -90,7 +100,7 @@ def init_db() -> None:
 
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    with sqlite3.connect(_sqlite_db_path()) as connection:
+    with _sqlite_connection() as connection:
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS predictions (
@@ -147,7 +157,7 @@ def insert_prediction(record: dict) -> None:
             connection.commit()
         return
 
-    with sqlite3.connect(_sqlite_db_path()) as connection:
+    with _sqlite_connection() as connection:
         connection.execute(
             """
             INSERT INTO predictions (
@@ -193,7 +203,7 @@ def get_history(limit: int = 100) -> list[dict]:
                 rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
-    with sqlite3.connect(_sqlite_db_path()) as connection:
+    with _sqlite_connection() as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
             """
@@ -233,7 +243,7 @@ def get_recent_machine_readings(machine_id: str, limit: int = 5) -> list[dict]:
         ordered.reverse()
         return ordered
 
-    with sqlite3.connect(_sqlite_db_path()) as connection:
+    with _sqlite_connection() as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
             """
