@@ -2,15 +2,51 @@ from __future__ import annotations
 
 import sqlite3
 from pathlib import Path
+from typing import Any
 
 from backend.config import get_settings
 
-DB_PATH = Path(__file__).resolve().parent.parent / "database" / "predictive_maintenance.db"
+
+DB_PATH = Path(get_settings().sqlite_path)
 
 
 def _is_postgres_enabled() -> bool:
     settings = get_settings()
     return bool(settings.database_url and settings.database_url.startswith("postgres"))
+
+
+def _sqlite_db_path() -> str:
+    return str(DB_PATH)
+
+
+def _create_postgres_indexes(cursor: Any) -> None:
+    cursor.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_predictions_timestamp
+        ON predictions (timestamp DESC)
+        """
+    )
+    cursor.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_predictions_machine_timestamp
+        ON predictions (machine_id, timestamp DESC)
+        """
+    )
+
+
+def _create_sqlite_indexes(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_predictions_timestamp
+        ON predictions (timestamp DESC)
+        """
+    )
+    connection.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_predictions_machine_timestamp
+        ON predictions (machine_id, timestamp DESC)
+        """
+    )
 
 
 def _column_exists(connection: sqlite3.Connection, table: str, column: str) -> bool:
@@ -48,12 +84,13 @@ def init_db() -> None:
                     ADD COLUMN IF NOT EXISTS risk_level TEXT NOT NULL DEFAULT 'safe'
                     """
                 )
+                _create_postgres_indexes(cursor)
             connection.commit()
         return
 
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    with sqlite3.connect(DB_PATH) as connection:
+    with sqlite3.connect(_sqlite_db_path()) as connection:
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS predictions (
@@ -75,6 +112,7 @@ def init_db() -> None:
             connection.execute(
                 "ALTER TABLE predictions ADD COLUMN risk_level TEXT NOT NULL DEFAULT 'safe'"
             )
+        _create_sqlite_indexes(connection)
         connection.commit()
 
 
@@ -109,7 +147,7 @@ def insert_prediction(record: dict) -> None:
             connection.commit()
         return
 
-    with sqlite3.connect(DB_PATH) as connection:
+    with sqlite3.connect(_sqlite_db_path()) as connection:
         connection.execute(
             """
             INSERT INTO predictions (
@@ -155,7 +193,7 @@ def get_history(limit: int = 100) -> list[dict]:
                 rows = cursor.fetchall()
         return [dict(row) for row in rows]
 
-    with sqlite3.connect(DB_PATH) as connection:
+    with sqlite3.connect(_sqlite_db_path()) as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
             """
@@ -195,7 +233,7 @@ def get_recent_machine_readings(machine_id: str, limit: int = 5) -> list[dict]:
         ordered.reverse()
         return ordered
 
-    with sqlite3.connect(DB_PATH) as connection:
+    with sqlite3.connect(_sqlite_db_path()) as connection:
         connection.row_factory = sqlite3.Row
         rows = connection.execute(
             """

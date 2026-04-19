@@ -41,3 +41,13 @@ def test_predict_and_history_roundtrip(tmp_path: Path) -> None:
             assert "risk_level" in history_data[0]
     finally:
         db.DB_PATH = original_db_path
+
+
+def test_client_config_endpoint_contract() -> None:
+    with TestClient(api_main.app) as client:
+        response = client.get("/client-config")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "auth_required" in payload
+    assert isinstance(payload["auth_required"], bool)

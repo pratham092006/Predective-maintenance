@@ -29,7 +29,10 @@ class Settings:
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
     project_root = Path(__file__).resolve().parent.parent
-    sqlite_default = project_root / "database" / "predictive_maintenance.db"
+    if os.getenv("VERCEL"):
+        sqlite_default = Path("/tmp") / "predictive_maintenance.db"
+    else:
+        sqlite_default = project_root / "database" / "predictive_maintenance.db"
     model_default = project_root / "ml" / "model.pkl"
 
     raw_db_url = os.getenv("DATABASE_URL")

@@ -25,6 +25,25 @@ env/
 .env
 .env.*
 !.env.example
+!.env.*.example
+
+# Secret and credential files
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.der
+*.jks
+*.keystore
+secrets/
+
+# Local deployment tooling and caches
+.cache/
+.turbo/
+tmp/
+*.pid
 
 # OS and editor files
 .DS_Store
@@ -43,3 +62,4 @@ ml/model.pkl
 ml/metrics.json
 ml/training_data.csv
 database/predictive_maintenance.db
+.vercel
