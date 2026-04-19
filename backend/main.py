@@ -21,6 +21,41 @@ SETTINGS = get_settings()
 logger = logging.getLogger(__name__)
 
 
+def _train_runtime_fallback_model() -> Any:
+    """Train a lightweight fallback model when artifact file is missing."""
+    from sklearn.ensemble import RandomForestClassifier
+
+    from ml.data_generator import create_training_dataset
+    from ml.model_utils import FEATURE_COLUMNS, build_features_frame
+
+    training_data = create_training_dataset(n_samples=900, machine_count=4, seed=42)
+    engineered = build_features_frame(training_data)
+    X = engineered[FEATURE_COLUMNS]
+    y = engineered["failure"].astype(int)
+
+    fallback_model = RandomForestClassifier(
+        n_estimators=90,
+        max_depth=10,
+        min_samples_leaf=2,
+        class_weight="balanced_subsample",
+        random_state=42,
+        n_jobs=-1,
+    )
+    fallback_model.fit(X, y)
+    return fallback_model
+
+
+def _bootstrap_model_after_load_failure(reason: str) -> Any | None:
+    """Best-effort model bootstrap to keep API usable on serverless deployments."""
+    try:
+        model = _train_runtime_fallback_model()
+        logger.warning("Using runtime-bootstrap model because %s", reason)
+        return model
+    except Exception:
+        logger.exception("Runtime model bootstrap failed after %s", reason)
+        return None
+
+
 def _has_wildcard_origin(origins: list[str]) -> bool:
     return "*" in origins
 
@@ -59,11 +94,11 @@ async def lifespan(_app: FastAPI):
         logger.info("Model loaded successfully from %s", SETTINGS.model_path)
     except FileNotFoundError:
         logger.warning("Model file was not found at %s", SETTINGS.model_path)
-        MODEL = None
+        MODEL = _bootstrap_model_after_load_failure("missing model artifact")
     except Exception:
         # Keep API alive even if model dependencies/artifact are unavailable.
         logger.exception("Model load failed due to unexpected error")
-        MODEL = None
+        MODEL = _bootstrap_model_after_load_failure("model load error")
     yield
 
 
