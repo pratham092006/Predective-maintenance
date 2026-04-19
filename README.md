@@ -182,10 +182,10 @@ If a secret was ever committed:
 
 ## Deployment Guides
 
-- DEPLOYMENT.md
-- VERCEL_DEPLOYMENT.md
-- RAILWAY_VERCEL_SUPABASE_DEPLOYMENT.md
-- RAILWAY_VERCEL_SUPABASE_CHECKLIST.md
+- DEPLOYMENT.md (source-of-truth)
+- VERCEL_DEPLOYMENT.md (Vercel quick start)
+- RAILWAY_VERCEL_SUPABASE_DEPLOYMENT.md (topology quick start)
+- RAILWAY_VERCEL_SUPABASE_CHECKLIST.md (execution checklist)
 
 Recommended production topology:
 

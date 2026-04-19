@@ -1,65 +1,52 @@
-# Deployment Guide (Backend + Frontend)
+# Deployment Guide
 
-This guide takes the project from local development to production-style deployment with:
+This is the source-of-truth deployment document for this project.
 
-- FastAPI backend
-- JavaScript frontend (served at `/ui`)
-- PostgreSQL database
-- Optional API key protection
-- CI checks in GitHub Actions
+If any quick-start guide conflicts with this file, follow this one.
 
-## Current Live Setup (Recommended)
+## Supported Topologies
 
-- Backend (Vercel): https://predictive-maintenance-api.vercel.app
-- Frontend (served by backend): https://predictive-maintenance-api.vercel.app/ui
+1. Single service (Vercel FastAPI + /ui static dashboard)
+2. Split stack (Railway backend + Vercel frontend + Supabase Postgres)
+3. Local production-like stack (Docker Compose backend + Postgres)
 
-This setup serves the JavaScript UI directly from FastAPI at `/ui`.
+## Prerequisites
 
-## 1) Prerequisites
+- Python 3.13+
+- Docker Desktop (for containerized runs)
+- Access to deployment platforms (Vercel, Railway, Supabase)
+- Trained model artifact at ml/model.pkl
 
-- Python 3.13 (for local runs)
-- Docker Desktop (for container deployment)
-- GitHub repository with Actions enabled
+## Environment Variables
 
-## 2) Production Configuration
+Common variables:
 
-Copy environment template and set secure values:
+- APP_ENV=production
+- DATABASE_URL=postgresql://<db_user>:<db_password>@<db_host>:5432/<db_name>?sslmode=require
+- CORS_ORIGINS=https://<frontend-domain>,http://localhost:8000,http://127.0.0.1:8000
+- MODEL_PATH=ml/model.pkl (or /app/ml/model.pkl in containers)
+- LOG_LEVEL=INFO
+- API_KEY=<strong-random-secret> (optional; enables protected mode)
 
-```powershell
-copy .env.example .env
-```
+Behavior notes:
 
-Minimum values to set in `.env`:
+- If API_KEY is unset: /predict and /history are open
+- If API_KEY is set: /predict and /history require X-API-Key header
+- If DATABASE_URL is unset: backend falls back to local SQLite
 
-- `APP_ENV=production`
-- `DATABASE_URL=postgresql://...`
-- `CORS_ORIGINS=<frontend-url>`
+## Option A: Local Production-Like (Docker Compose)
 
-Optional:
-
-- `API_KEY=<strong-random-secret>` (set only when you want protected `/predict` and `/history`)
-
-For local single-service usage (frontend served by backend at `/ui`), `CORS_ORIGINS` can remain default.
-
-## 3) Local Production-Like Run (Docker Compose)
-
-From project root:
+Start:
 
 ```powershell
 docker compose up --build
 ```
 
-Or use the included Windows helper:
+Or with helper:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\start-docker.ps1
 ```
-
-Services:
-
-- Backend: `http://localhost:8000`
-- Frontend: `http://localhost:8000/ui`
-- Postgres: `localhost:5432`
 
 Stop:
 
@@ -67,126 +54,124 @@ Stop:
 powershell -ExecutionPolicy Bypass -File .\scripts\stop-docker.ps1
 ```
 
-Reset database volume:
+Reset DB volume:
 
 ```powershell
 docker compose down -v
 ```
 
-## 4) API Key Behavior
+Endpoints:
 
-- If `API_KEY` is empty: backend endpoints behave as open (no auth required)
-- If `API_KEY` is set: `/predict` and `/history` require header:
+- Backend health: http://localhost:8000/
+- UI: http://localhost:8000/ui
 
-```text
-X-API-Key: <your-api-key>
-```
+## Option B: Vercel FastAPI + Built-In /ui
 
-Frontend and simulator already support this via environment variable or input.
+Used files:
 
-## 5) CORS Setup
+- api/index.py
+- vercel.json
+- frontend-js/* (served from backend at /ui)
 
-Set `CORS_ORIGINS` to a comma-separated list of trusted frontend origins.
-
-Examples:
-
-- Local: `http://localhost:8000`
-- Multiple: `https://app.example.com,https://staging.example.com`
-
-Do not use `*` in public production.
-
-## 6) Cloud Deployment Options
-
-### Option A: Single VM (simple)
-
-1. Provision VM.
-2. Install Docker.
-3. Clone repo.
-4. Create `.env` with production values.
-5. Run `docker compose up -d --build`.
-6. Put Nginx or Caddy in front for TLS.
-
-### Option B: Managed services (recommended)
-
-- Backend container: Azure Container Apps / AWS ECS / Render / Railway
-- Frontend: static files served by backend at `/ui`
-- Database: managed PostgreSQL (Azure Database for PostgreSQL, RDS, Neon, Supabase)
-
-Set environment variables in provider dashboard instead of `.env` file.
-
-For the exact Supabase + Railway + Vercel split deployment, follow:
-
-- `RAILWAY_VERCEL_SUPABASE_DEPLOYMENT.md`
-
-### Option C: Vercel FastAPI + built-in JavaScript UI (current preferred pattern)
-
-1. Deploy backend to Vercel (root `requirements.txt` + `api/index.py` + `vercel.json`).
-2. In Vercel project env vars, set at minimum:
-	- `APP_ENV=production`
-	- `CORS_ORIGINS=https://predictive-maintenance-api.vercel.app`
-
-	Optional:
-	- `API_KEY=<strong-random-secret>`
-3. Redeploy Vercel after env changes.
-4. Run smoke checks:
+Deploy:
 
 ```powershell
-# Frontend page
-curl https://predictive-maintenance-api.vercel.app/ui
-
-# Backend health
-curl https://predictive-maintenance-api.vercel.app/
-
-# Backend history
-curl "https://predictive-maintenance-api.vercel.app/history?limit=2"
-
-# Auth mode metadata
-curl "https://predictive-maintenance-api.vercel.app/client-config"
+vercel
+vercel --prod
 ```
 
-If these pass, frontend and backend are wired correctly.
+Set Vercel environment variables:
 
-### Vercel SQLite Note
+- APP_ENV=production
+- DATABASE_URL=<managed-postgres-dsn> (recommended)
+- CORS_ORIGINS=https://<vercel-domain>
+- MODEL_PATH=ml/model.pkl
+- LOG_LEVEL=INFO
+- API_KEY=<secret> (optional)
 
-When `DATABASE_URL` is not set in Vercel, SQLite must write under `/tmp` (ephemeral storage).
+Important:
 
-- Good for demos/smoke tests.
-- Not durable across cold starts or redeploys.
-- For persistent production history, use managed Postgres and set `DATABASE_URL`.
+- Without DATABASE_URL, Vercel uses ephemeral filesystem for SQLite-like fallback behavior and data is not durable
+- For persistent history, use managed Postgres
 
-## 7) CI Pipeline
+## Option C: Railway Backend + Vercel Frontend + Supabase
 
-Workflow file: `.github/workflows/ci.yml`
+Backend on Railway:
 
-Current checks:
+- Build from repository root using backend container setup
+- Set env vars from the Environment Variables section above
+- Use MODEL_PATH=/app/ml/model.pkl in containerized Railway runtime
 
-- Install dependencies
-- Run `pytest -q`
+Frontend on Vercel:
 
-Recommended next steps:
+- Deploy frontend-js as static project, or keep /ui through backend if preferred
+- Set API base in frontend settings or query parameter:
 
-- Add lint stage
-- Add container image build stage
-- Add deployment job gated on main branch
+```text
+https://<frontend-domain>/?apiBase=https://<railway-backend-domain>
+```
 
-## 8) Verification Checklist
+Supabase:
 
-- `GET /` returns healthy status.
-- `/client-config` returns expected auth mode.
-- `/predict` and `/history` return records in open mode.
-- If `API_KEY` is set, `/predict` works with valid `X-API-Key`.
-- Frontend can fetch health/history and submit predictions.
-- CI passing on latest commit.
+- Use pooled or direct Postgres connection string with sslmode=require
+- Rotate credentials if exposed
 
-## 9) Rollback Strategy
+## Verification Checklist
 
-- Keep last known good image tag.
-- Roll back backend/frontend to previous tag.
-- Database rollback: restore from managed backup snapshot.
+Health check:
 
-## 10) Security Notes
+```powershell
+c:/python313/python.exe -c "import requests; b='https://<backend-domain>'; r=requests.get(b+'/', timeout=20); print(r.status_code, r.text[:200])"
+```
 
-- Never commit `.env`.
-- Rotate API keys periodically.
-- Restrict CORS to real frontend domains.
-- Use managed PostgreSQL backups and TLS.
+Auth mode metadata:
+
+```powershell
+c:/python313/python.exe -c "import requests; b='https://<backend-domain>'; r=requests.get(b+'/client-config', timeout=20); print(r.status_code, r.text)"
+```
+
+Predict in open mode:
+
+```powershell
+c:/python313/python.exe -c "import requests; b='https://<backend-domain>'; payload={'machine_id':'M-001','temperature':72.0,'vibration':2.3,'pressure':31.0}; r=requests.post(b+'/predict', json=payload, timeout=20); print(r.status_code, r.text[:240])"
+```
+
+Predict in protected mode:
+
+```powershell
+c:/python313/python.exe -c "import requests; b='https://<backend-domain>'; h={'X-API-Key':'<your-api-key>'}; payload={'machine_id':'M-001','temperature':72.0,'vibration':2.3,'pressure':31.0}; r=requests.post(b+'/predict', json=payload, headers=h, timeout=20); print(r.status_code, r.text[:240])"
+```
+
+UI smoke test:
+
+- Open /ui (or frontend domain)
+- Set API Base URL to backend domain
+- Run Health check in UI
+- Run one prediction and confirm history updates
+
+## CI/CD Recommendation
+
+Current CI should at least run:
+
+- pytest -q
+- python -m compileall backend ml simulator api tests
+
+Recommended additions:
+
+- Lint stage
+- Container build stage
+- Deployment stage with environment approvals
+
+## Security Baseline
+
+- Never commit .env with real values
+- Keep only *.example templates in repo
+- Restrict CORS_ORIGINS to exact frontend domains
+- Rotate API_KEY and DB credentials periodically
+- Use TLS endpoints for all production traffic
+
+## Rollback
+
+- Keep previous deploy artifact/image tag
+- Roll back app first, then evaluate DB schema compatibility
+- Restore DB from managed snapshot only if required
