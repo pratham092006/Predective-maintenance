@@ -51,3 +51,14 @@ def test_client_config_endpoint_contract() -> None:
     payload = response.json()
     assert "auth_required" in payload
     assert isinstance(payload["auth_required"], bool)
+
+
+def test_health_endpoint_reports_model_source() -> None:
+    with TestClient(api_main.app) as client:
+        response = client.get("/")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert isinstance(payload["model_loaded"], bool)
+    assert payload["model_source"] in {"artifact", "fallback", "unavailable"}

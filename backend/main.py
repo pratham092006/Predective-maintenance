@@ -18,6 +18,7 @@ from backend.schemas import HealthResponse, HistoryItem, PredictionOutput, Senso
 SAFE_THRESHOLD = 0.30
 CRITICAL_THRESHOLD = 0.70
 MODEL = None
+MODEL_SOURCE = "unavailable"
 SETTINGS = get_settings()
 logger = logging.getLogger(__name__)
 
@@ -85,20 +86,23 @@ def build_advisory(machine_id: str, risk_level: str, probability: float) -> str:
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
     """Prepare database and model when API starts."""
-    global MODEL
+    global MODEL, MODEL_SOURCE
     init_db()
     try:
         from ml.model_utils import load_model
 
         MODEL = load_model(path=SETTINGS.model_path)
+        MODEL_SOURCE = "artifact"
         logger.info("Model loaded successfully from %s", SETTINGS.model_path)
     except FileNotFoundError:
         logger.warning("Model file was not found at %s", SETTINGS.model_path)
         MODEL = _bootstrap_model_after_load_failure("missing model artifact")
+        MODEL_SOURCE = "fallback" if MODEL is not None else "unavailable"
     except Exception:
         # Keep API alive even if model dependencies/artifact are unavailable.
         logger.exception("Model load failed due to unexpected error")
         MODEL = _bootstrap_model_after_load_failure("model load error")
+        MODEL_SOURCE = "fallback" if MODEL is not None else "unavailable"
     yield
 
 
@@ -131,7 +135,11 @@ if WEB_UI_DIR.exists():
 
 @app.get("/", response_model=HealthResponse)
 def health_check() -> HealthResponse:
-    return HealthResponse(status="ok", model_loaded=MODEL is not None)
+    return HealthResponse(
+        status="ok",
+        model_loaded=MODEL is not None,
+        model_source=MODEL_SOURCE,
+    )
 
 
 @app.get("/client-config")

@@ -32,3 +32,4 @@ class HistoryItem(PredictionOutput):
 class HealthResponse(BaseModel):
     status: str
     model_loaded: bool
+    model_source: str
