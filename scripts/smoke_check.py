@@ -101,6 +101,42 @@ def check_environment(
         if not isinstance(prob, (int, float)) or prob < 0.0 or prob > 1.0:
             checks_ok = False
 
+    batch_predict_payload = {
+        "persist": False,
+        "rows": [
+            {
+                "temperature": 84.3,
+                "vibration": 3.8,
+                "pressure": 37.5,
+            }
+        ],
+    }
+    ok, payload, response = _request(
+        session,
+        "POST",
+        f"{base_url.rstrip('/')}/predict/batch",
+        timeout,
+        headers=headers,
+        json=batch_predict_payload,
+    )
+    details["predict_batch"] = payload
+    if not ok or response is None:
+        checks_ok = False
+    elif response.status_code == 401 and auth_required and not api_key:
+        checks_ok = False
+        details["predict_batch_auth_hint"] = "Set --api-key because auth_required=true"
+    elif response.status_code != 200:
+        checks_ok = False
+    else:
+        body = payload.get("body", {}) if isinstance(payload, dict) else {}
+        results = body.get("results") if isinstance(body, dict) else None
+        if not isinstance(results, list) or len(results) != 1:
+            checks_ok = False
+        else:
+            prob = results[0].get("probability")
+            if not isinstance(prob, (int, float)) or prob < 0.0 or prob > 1.0:
+                checks_ok = False
+
     ok, payload, response = _request(
         session,
         "GET",

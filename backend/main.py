@@ -13,7 +13,15 @@ from fastapi.staticfiles import StaticFiles
 
 from backend.config import get_settings
 from backend.db import get_history, get_recent_machine_readings, init_db, insert_prediction
-from backend.schemas import HealthResponse, HistoryItem, PredictionOutput, SensorInput
+from backend.schemas import (
+    BatchPredictionInput,
+    BatchPredictionOutput,
+    BatchPredictionResult,
+    HealthResponse,
+    HistoryItem,
+    PredictionOutput,
+    SensorInput,
+)
 
 SAFE_THRESHOLD = 0.30
 CRITICAL_THRESHOLD = 0.70
@@ -211,6 +219,85 @@ def predict(payload: SensorInput, _auth: None = Depends(require_api_key)) -> Pre
         risk_level=risk_level,
         advisory=advisory,
         timestamp=timestamp,
+    )
+
+
+@app.post("/predict/batch", response_model=BatchPredictionOutput)
+def predict_batch(payload: BatchPredictionInput, _auth: None = Depends(require_api_key)) -> BatchPredictionOutput:
+    if MODEL is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Model is not available in this environment.",
+        )
+
+    risk_distribution: dict[str, int] = {"safe": 0, "warning": 0, "critical": 0}
+    results: list[BatchPredictionResult] = []
+
+    try:
+        from ml.model_utils import predict_sample
+    except Exception as exc:
+        logger.exception("Batch prediction failed because runtime dependencies are unavailable")
+        raise HTTPException(
+            status_code=503,
+            detail="Prediction dependencies unavailable in this environment.",
+        ) from exc
+
+    now_utc = datetime.now(timezone.utc)
+
+    for index, row in enumerate(payload.rows):
+        machine_id = (row.machine_id or f"BATCH-{index + 1:04d}").strip() or f"BATCH-{index + 1:04d}"
+        timestamp = row.timestamp or now_utc
+
+        prediction, probability = predict_sample(
+            MODEL,
+            temperature=row.temperature,
+            vibration=row.vibration,
+            pressure=row.pressure,
+            machine_id=machine_id,
+            timestamp=timestamp,
+            recent_history=None,
+        )
+
+        risk_level = classify_risk(probability)
+        alert = risk_level == "critical"
+        advisory = build_advisory(machine_id, risk_level, probability)
+        risk_distribution[risk_level] += 1
+
+        if payload.persist:
+            insert_prediction(
+                {
+                    "machine_id": machine_id,
+                    "temperature": row.temperature,
+                    "vibration": row.vibration,
+                    "pressure": row.pressure,
+                    "prediction": prediction,
+                    "probability": probability,
+                    "alert": alert,
+                    "risk_level": risk_level,
+                    "timestamp": timestamp.isoformat(),
+                }
+            )
+
+        results.append(
+            BatchPredictionResult(
+                index=index,
+                machine_id=machine_id,
+                temperature=row.temperature,
+                vibration=row.vibration,
+                pressure=row.pressure,
+                prediction=prediction,
+                probability=probability,
+                alert=alert,
+                risk_level=risk_level,
+                advisory=advisory,
+                timestamp=timestamp,
+            )
+        )
+
+    return BatchPredictionOutput(
+        total_records=len(results),
+        risk_distribution=risk_distribution,
+        results=results,
     )
 
 
