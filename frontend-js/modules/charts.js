@@ -1,5 +1,5 @@
-const defaultGrid = "rgba(145, 173, 203, 0.22)";
-const defaultTick = "#95aeca";
+const defaultGrid = "#e8ebf2";
+const defaultTick = "#7d8495";
 
 function createLineChart(canvas, datasets, yMax = null) {
   return new Chart(canvas.getContext("2d"), {
@@ -27,7 +27,7 @@ function createLineChart(canvas, datasets, yMax = null) {
       plugins: {
         legend: {
           labels: {
-            color: "#e4eef7",
+            color: "#2a2f3b",
           },
         },
       },
@@ -40,24 +40,24 @@ export function createSensorChart(canvas) {
     {
       label: "Temperature",
       data: [],
-      borderColor: "#45d6ff",
-      backgroundColor: "rgba(69, 214, 255, 0.16)",
+      borderColor: "#2eb7b2",
+      backgroundColor: "rgba(46, 183, 178, 0.14)",
       pointRadius: 0,
       tension: 0.28,
     },
     {
       label: "Vibration",
       data: [],
-      borderColor: "#ffc35a",
-      backgroundColor: "rgba(255, 195, 90, 0.13)",
+      borderColor: "#e8b874",
+      backgroundColor: "rgba(232, 184, 116, 0.15)",
       pointRadius: 0,
       tension: 0.28,
     },
     {
       label: "Pressure",
       data: [],
-      borderColor: "#9ec0ff",
-      backgroundColor: "rgba(158, 192, 255, 0.13)",
+      borderColor: "#9aa8d8",
+      backgroundColor: "rgba(154, 168, 216, 0.14)",
       pointRadius: 0,
       tension: 0.28,
     },
@@ -71,8 +71,8 @@ export function createProbabilityChart(canvas, label = "Failure Probability") {
       {
         label,
         data: [],
-        borderColor: "#ff7b7b",
-        backgroundColor: "rgba(255, 123, 123, 0.15)",
+        borderColor: "#2eb7b2",
+        backgroundColor: "rgba(46, 183, 178, 0.14)",
         pointRadius: 0,
         tension: 0.32,
       },
@@ -93,8 +93,8 @@ export function createPieChart(canvas, label = "Risk Distribution") {
         {
           label,
           data: [0, 0, 0],
-          backgroundColor: ["#35d18f", "#f4c44c", "#ff5f5f"],
-          borderColor: ["#35d18f", "#f4c44c", "#ff5f5f"],
+          backgroundColor: ["#58c88f", "#e6b466", "#e8797f"],
+          borderColor: ["#58c88f", "#e6b466", "#e8797f"],
           borderWidth: 1,
         },
       ],
@@ -106,7 +106,7 @@ export function createPieChart(canvas, label = "Risk Distribution") {
       plugins: {
         legend: {
           labels: {
-            color: "#e4eef7",
+            color: "#2a2f3b",
           },
         },
       },
