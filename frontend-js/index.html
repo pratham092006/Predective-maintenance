@@ -1,181 +1,327 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="pm-api-base" content="">
-  <title>Predictive Maintenance Dashboard</title>
+  <title>Predictive Maintenance Cloud</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,0,0" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="shell">
-    <header class="hero">
-      <div class="hero-meta">
-        <span class="live-badge"><span class="live-dot"></span>Live telemetry</span>
-        <span id="themeChip" class="theme-chip">Day mode</span>
-        <button id="toggleTheme" type="button" class="theme-toggle" aria-label="Toggle theme">Night</button>
-        <button id="toggleDensity" type="button" class="theme-toggle" aria-label="Toggle compact mode">Compact</button>
-        <button id="openGuide" type="button" class="theme-toggle" aria-label="Open quick guide">Guide</button>
-      </div>
-      <div class="hero-grid">
-        <div>
-          <h1>Predictive Maintenance</h1>
-          <p class="hero-subtitle">Dynamic command view for risk, uptime, and machine behavior.</p>
-          <p class="hero-phrase">Now tracking: <strong id="heroPhrase">Failure probability</strong></p>
+  <div class="app-shell">
+    <aside class="sidebar glass">
+      <div class="brand-block">
+        <div class="brand-mark">
+          <span class="material-symbols-rounded" aria-hidden="true">precision_manufacturing</span>
         </div>
-        <aside class="hero-signal" aria-label="Live dashboard status">
-          <p class="signal-title">System pulse</p>
-          <p id="liveClock" class="signal-time">--:--:--</p>
-          <p id="signalStatus" class="signal-status">Awaiting first telemetry frame</p>
-        </aside>
+        <div>
+          <p class="brand-title">Predictive Maintenance</p>
+          <p class="brand-subtitle">Industrial Intelligence Cloud</p>
+        </div>
       </div>
-    </header>
 
-    <main class="layout">
-      <aside class="panel panel-controls">
-        <section class="panel-section">
-          <h2>API</h2>
-          <label for="apiBase">API Base URL</label>
-          <input id="apiBase" type="url" placeholder="Auto-detected or set manually" autocomplete="off">
+      <nav class="nav-stack" aria-label="Application navigation">
+        <button class="nav-item active" data-view="live-monitoring" type="button">
+          <span class="material-symbols-rounded" aria-hidden="true">monitoring</span>
+          <span>Live Monitoring</span>
+        </button>
+        <button class="nav-item" data-view="manual-prediction" type="button">
+          <span class="material-symbols-rounded" aria-hidden="true">model_training</span>
+          <span>Manual Prediction</span>
+        </button>
+        <button class="nav-item" data-view="upload-dataset" type="button">
+          <span class="material-symbols-rounded" aria-hidden="true">upload_file</span>
+          <span>Upload Dataset</span>
+        </button>
+        <button class="nav-item" data-view="machine-analytics" type="button">
+          <span class="material-symbols-rounded" aria-hidden="true">analytics</span>
+          <span>Machine Analytics</span>
+        </button>
+      </nav>
 
-          <label for="apiKey">API Key</label>
-          <input id="apiKey" type="password" placeholder="Required when API auth is enabled" autocomplete="off" spellcheck="false" autocapitalize="none" data-1p-ignore="true" data-lpignore="true" data-bwignore="true">
-          <label class="toggle key-toggle" for="showApiKey">
-            <input id="showApiKey" type="checkbox">
-            <span>Show API key</span>
+      <section class="api-settings">
+        <h2>Connection</h2>
+        <label for="apiBaseInput">API Base URL</label>
+        <input id="apiBaseInput" type="url" placeholder="https://api.example.com" autocomplete="off">
+
+        <label for="apiKeyInput">API Key</label>
+        <input id="apiKeyInput" type="password" placeholder="Optional" autocomplete="off" spellcheck="false" autocapitalize="none">
+
+        <label class="checkbox-line" for="showKeyToggle">
+          <input id="showKeyToggle" type="checkbox">
+          <span>Show API key</span>
+        </label>
+
+        <div class="button-row">
+          <button id="saveSettingsBtn" class="btn-primary" type="button">Save</button>
+          <button id="healthCheckBtn" class="btn-secondary" type="button">Health</button>
+        </div>
+
+        <div id="connectionBadge" class="status-badge idle">Not connected</div>
+      </section>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar glass">
+        <div>
+          <p class="eyebrow">Factory Operations</p>
+          <h1 id="viewTitle">Live Monitoring</h1>
+        </div>
+        <div class="topbar-controls">
+          <label class="checkbox-line" for="autoRefreshToggle">
+            <input id="autoRefreshToggle" type="checkbox" checked>
+            <span>Auto refresh</span>
           </label>
+          <label for="refreshIntervalSelect">Interval</label>
+          <select id="refreshIntervalSelect">
+            <option value="2000">2s</option>
+            <option value="4000" selected>4s</option>
+            <option value="5000">5s</option>
+          </select>
+          <button id="refreshNowBtn" class="btn-secondary" type="button">Refresh</button>
+        </div>
+      </header>
 
-          <div class="button-row">
-            <button id="saveConfig" type="button">Save</button>
-            <button id="checkHealth" type="button" class="btn-secondary">Health</button>
-          </div>
-          <div id="healthStatus" class="status-pill status-unknown">Not connected</div>
-        </section>
-
-        <section class="panel-section">
-          <h2>Predict</h2>
-          <form id="predictForm" novalidate>
-            <label for="machineId">Machine ID</label>
-            <input id="machineId" type="text" value="M-001" required>
-
-            <label for="temperature">Temperature (C)</label>
-            <input id="temperature" type="number" step="0.1" min="-50" max="200" value="72.0" required>
-
-            <label for="vibration">Vibration (mm/s)</label>
-            <input id="vibration" type="number" step="0.1" min="0" max="50" value="2.5" required>
-
-            <label for="pressure">Pressure (psi)</label>
-            <input id="pressure" type="number" step="0.1" min="0" max="300" value="31.2" required>
-
-            <div class="scenario-row" aria-label="Prediction presets">
-              <button type="button" class="scenario-btn" data-scenario="safe">Low risk</button>
-              <button type="button" class="scenario-btn" data-scenario="warning">Medium risk</button>
-              <button type="button" class="scenario-btn" data-scenario="critical">High risk</button>
-            </div>
-
-            <button id="submitPrediction" type="submit">Run Prediction</button>
-          </form>
-          <p id="formError" class="error-text" role="alert"></p>
-        </section>
-      </aside>
-
-      <section class="panel panel-dashboard">
-        <section class="stats-grid" aria-label="Current health summary">
-          <article id="riskCard" class="stat-card">
-            <p class="stat-label">Latest Risk</p>
-            <p id="latestRisk" class="stat-value">--</p>
-            <svg class="stat-spark" viewBox="0 0 120 24" aria-hidden="true"><polyline id="riskSpark" points=""></polyline></svg>
+      <section id="view-live-monitoring" class="view active" aria-label="Live monitoring">
+        <div class="kpi-grid">
+          <article class="kpi-card glass">
+            <p>Temperature</p>
+            <h3 id="kpiTemperature">--</h3>
           </article>
-          <article id="probabilityCard" class="stat-card">
-            <p class="stat-label">Failure Probability</p>
-            <p id="latestProbability" class="stat-value">--</p>
-            <svg class="stat-spark" viewBox="0 0 120 24" aria-hidden="true"><polyline id="probabilitySpark" points=""></polyline></svg>
+          <article class="kpi-card glass">
+            <p>Vibration</p>
+            <h3 id="kpiVibration">--</h3>
           </article>
-          <article id="machineCard" class="stat-card">
-            <p class="stat-label">Latest Machine</p>
-            <p id="latestMachine" class="stat-value">--</p>
-            <svg class="stat-spark" viewBox="0 0 120 24" aria-hidden="true"><polyline id="temperatureSpark" points=""></polyline></svg>
+          <article class="kpi-card glass">
+            <p>Pressure</p>
+            <h3 id="kpiPressure">--</h3>
           </article>
-          <article id="historyCard" class="stat-card">
-            <p class="stat-label">History Records</p>
-            <p id="historyCount" class="stat-value">0</p>
-            <svg class="stat-spark" viewBox="0 0 120 24" aria-hidden="true"><polyline id="pressureSpark" points=""></polyline></svg>
+          <article class="kpi-card glass">
+            <p>Failure Probability</p>
+            <h3 id="kpiProbability">--</h3>
           </article>
-        </section>
+          <article class="kpi-card glass">
+            <p>Risk Level</p>
+            <h3 id="kpiRisk" class="risk-chip">--</h3>
+          </article>
+        </div>
 
-        <section class="chart-section">
-          <div class="chart-header">
-            <h2>Trend</h2>
-            <div class="toggle-row">
-              <p id="lastUpdated" class="meta-note">Last update: --</p>
-              <label class="toggle" for="autoRefresh">
-                <input id="autoRefresh" type="checkbox" checked>
-                <span>Auto refresh</span>
-              </label>
-              <button id="refreshHistory" type="button" class="btn-secondary">Refresh</button>
+        <div class="dual-grid">
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Live Status</h2>
+              <span class="material-symbols-rounded" aria-hidden="true">memory</span>
             </div>
-          </div>
-          <div class="risk-zones" aria-label="Risk zone legend">
-            <span class="zone-safe">Safe 0-30%</span>
-            <span class="zone-warning">Warning 30-70%</span>
-            <span class="zone-critical">Critical 70-100%</span>
-          </div>
-          <canvas id="riskChart" height="140" aria-label="Risk probability trend chart"></canvas>
-        </section>
+            <div class="status-lines">
+              <p>System Status: <strong id="systemStatusLabel">Awaiting data</strong></p>
+              <p>Last Update: <strong id="lastUpdateLabel">--</strong></p>
+            </div>
+            <label for="machineSelector">Machine ID</label>
+            <select id="machineSelector">
+              <option value="all">All machines</option>
+            </select>
+          </section>
 
-        <section class="pulse-section" aria-label="Latest sensor pulse indicators">
-          <div class="pulse-card">
-            <div class="pulse-header">
-              <p class="pulse-label">Temperature</p>
-              <p id="tempPulseValue" class="pulse-value">--</p>
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Top Risky Machines</h2>
+              <span class="material-symbols-rounded" aria-hidden="true">warning</span>
             </div>
-            <div class="pulse-track"><span id="tempPulseBar" class="pulse-fill pulse-temp"></span></div>
-          </div>
-          <div class="pulse-card">
-            <div class="pulse-header">
-              <p class="pulse-label">Vibration</p>
-              <p id="vibrationPulseValue" class="pulse-value">--</p>
-            </div>
-            <div class="pulse-track"><span id="vibrationPulseBar" class="pulse-fill pulse-vibration"></span></div>
-          </div>
-          <div class="pulse-card">
-            <div class="pulse-header">
-              <p class="pulse-label">Pressure</p>
-              <p id="pressurePulseValue" class="pulse-value">--</p>
-            </div>
-            <div class="pulse-track"><span id="pressurePulseBar" class="pulse-fill pulse-pressure"></span></div>
-          </div>
-        </section>
+            <ol id="leaderboardList" class="leaderboard">
+              <li>No data available</li>
+            </ol>
+          </section>
+        </div>
 
-        <section class="table-section">
-          <div class="table-header">
-            <h2>History</h2>
-            <div class="table-controls">
-              <div class="filter-group" aria-label="Filter by risk">
-                <button id="filterAll" type="button" class="filter-btn is-active" data-risk-filter="all">All</button>
-                <button id="filterSafe" type="button" class="filter-btn" data-risk-filter="safe">Safe</button>
-                <button id="filterWarning" type="button" class="filter-btn" data-risk-filter="warning">Warning</button>
-                <button id="filterCritical" type="button" class="filter-btn" data-risk-filter="critical">Critical</button>
+        <div class="chart-grid">
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Sensor Time Series</h2>
+            </div>
+            <canvas id="sensorChart" height="120"></canvas>
+          </section>
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Failure Probability Trend</h2>
+            </div>
+            <canvas id="probabilityChart" height="120"></canvas>
+          </section>
+        </div>
+
+        <div class="dual-grid">
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Machine Risk Heatmap</h2>
+            </div>
+            <div id="machineHeatmap" class="plot-box"></div>
+          </section>
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Risk Distribution</h2>
+            </div>
+            <canvas id="riskPieChart" height="150"></canvas>
+          </section>
+        </div>
+
+        <section class="panel glass">
+          <div class="panel-heading">
+            <h2>Alerts Panel</h2>
+            <span class="material-symbols-rounded" aria-hidden="true">notifications_active</span>
+          </div>
+          <ul id="alertsList" class="alerts-list">
+            <li class="alert-item info">No active alerts.</li>
+          </ul>
+        </section>
+      </section>
+
+      <section id="view-manual-prediction" class="view" aria-label="Manual prediction">
+        <div class="dual-grid">
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Manual Prediction</h2>
+            </div>
+            <form id="manualPredictionForm" class="form-grid" novalidate>
+              <label for="manualMachineId">Machine ID</label>
+              <input id="manualMachineId" type="text" value="M-001" required>
+
+              <label for="manualTemperature">Temperature</label>
+              <input id="manualTemperature" type="number" value="78" step="0.1" min="-50" max="200" required>
+
+              <label for="manualVibration">Vibration</label>
+              <input id="manualVibration" type="number" value="3.4" step="0.1" min="0" max="50" required>
+
+              <label for="manualPressure">Pressure</label>
+              <input id="manualPressure" type="number" value="35" step="0.1" min="0" max="300" required>
+
+              <div class="button-row">
+                <button id="runPredictionBtn" class="btn-primary" type="submit">Run Prediction</button>
+                <button id="clearPredictionBtn" class="btn-secondary" type="button">Clear</button>
               </div>
-              <label for="historyLimit">Rows
-                <select id="historyLimit">
-                  <option value="10">10</option>
-                  <option value="25" selected>25</option>
-                  <option value="50">50</option>
-                </select>
-              </label>
+              <p id="manualError" class="error-text" role="alert"></p>
+            </form>
+          </section>
+
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Prediction Summary</h2>
             </div>
+            <div class="status-lines">
+              <p>Prediction: <strong id="manualPredictionLabel">--</strong></p>
+              <p>Risk Level: <strong id="manualRiskLabel" class="risk-chip">--</strong></p>
+              <p>Advisory: <strong id="manualAdvisory">--</strong></p>
+            </div>
+            <div id="confidenceGauge" class="plot-box"></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="view-upload-dataset" class="view" aria-label="Upload dataset">
+        <section class="panel glass">
+          <div class="panel-heading">
+            <h2>Upload Dataset</h2>
+            <span class="material-symbols-rounded" aria-hidden="true">dataset</span>
           </div>
+          <p class="helper-text">Upload a CSV with columns temperature, vibration, pressure (machine_id optional).</p>
+
+          <div class="upload-controls">
+            <input id="csvFileInput" type="file" accept=".csv,text/csv">
+            <button id="runBatchBtn" class="btn-primary" type="button" disabled>Run Batch Prediction</button>
+            <button id="downloadResultsBtn" class="btn-secondary" type="button" disabled>Download Results CSV</button>
+          </div>
+
+          <p id="uploadStatus" class="helper-text">No file selected.</p>
+          <p id="uploadError" class="error-text" role="alert"></p>
+        </section>
+
+        <div class="dual-grid">
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Batch Risk Distribution</h2>
+            </div>
+            <canvas id="uploadRiskChart" height="140"></canvas>
+          </section>
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Batch Summary</h2>
+            </div>
+            <div id="uploadSummary" class="status-lines">
+              <p>Total rows: <strong>0</strong></p>
+              <p>Critical rows: <strong>0</strong></p>
+              <p>Average probability: <strong>0%</strong></p>
+            </div>
+          </section>
+        </div>
+
+        <section class="panel glass">
           <div class="table-wrap">
-            <table id="historyTable">
+            <table id="uploadTable">
               <thead>
                 <tr>
-                  <th>Time</th>
+                  <th>#</th>
                   <th>Machine</th>
-                  <th>Temp</th>
+                  <th>Temperature</th>
+                  <th>Vibration</th>
+                  <th>Pressure</th>
+                  <th>Prediction</th>
+                  <th>Probability</th>
+                  <th>Risk</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr><td colspan="8">Upload a CSV file to preview batch output.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
+      <section id="view-machine-analytics" class="view" aria-label="Machine analytics">
+        <section class="panel glass">
+          <div class="panel-heading">
+            <h2>Machine Analytics</h2>
+          </div>
+          <div class="analytics-filters">
+            <label for="analyticsMachineSelect">Machine</label>
+            <select id="analyticsMachineSelect">
+              <option value="all">All machines</option>
+            </select>
+
+            <label for="analyticsRangeSelect">Time Range</label>
+            <select id="analyticsRangeSelect">
+              <option value="15">Last 15 minutes</option>
+              <option value="60" selected>Last 60 minutes</option>
+              <option value="240">Last 4 hours</option>
+              <option value="1440">Last 24 hours</option>
+            </select>
+          </div>
+        </section>
+
+        <div class="chart-grid">
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Analytics Sensor Trends</h2>
+            </div>
+            <canvas id="analyticsSensorChart" height="130"></canvas>
+          </section>
+          <section class="panel glass">
+            <div class="panel-heading">
+              <h2>Analytics Risk Trend</h2>
+            </div>
+            <canvas id="analyticsRiskChart" height="130"></canvas>
+          </section>
+        </div>
+
+        <section class="panel glass">
+          <div class="table-wrap">
+            <table id="analyticsTable">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Machine</th>
+                  <th>Temperature</th>
                   <th>Vibration</th>
                   <th>Pressure</th>
                   <th>Probability</th>
@@ -183,7 +329,7 @@
                 </tr>
               </thead>
               <tbody>
-                <tr><td colspan="7">No data yet</td></tr>
+                <tr><td colspan="7">No analytics data available.</td></tr>
               </tbody>
             </table>
           </div>
@@ -192,21 +338,11 @@
     </main>
   </div>
 
-  <section id="onboardingOverlay" class="onboarding" aria-hidden="true" role="dialog" aria-label="Dashboard quick guide">
-    <div class="onboarding-card">
-      <p id="onboardingStepCount" class="onboarding-step">Step 1/4</p>
-      <h2 id="onboardingTitle">Welcome</h2>
-      <p id="onboardingBody">This dashboard helps you monitor machine risk in real time.</p>
-      <div class="onboarding-actions">
-        <button id="onboardingClose" type="button" class="btn-secondary">Skip</button>
-        <button id="onboardingNext" type="button">Next</button>
-      </div>
-    </div>
-  </section>
-
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-  <script src="app.js" defer></script>
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

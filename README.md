@@ -7,7 +7,11 @@ Modern predictive maintenance system with ML inference, FastAPI backend APIs, li
 - Machine-risk prediction model built with scikit-learn
 - FastAPI backend with health, prediction, and history endpoints
 - SQLite local persistence with optional PostgreSQL (Supabase/Railway)
-- JavaScript dashboard served at /ui with live trend visualization
+- JavaScript dashboard served at /ui with four operational modes:
+  - Live Monitoring
+  - Manual Prediction
+  - Upload Dataset (CSV batch scoring)
+  - Machine Analytics
 - Sensor simulator for continuous synthetic telemetry
 - Docker Compose setup for backend plus Postgres
 - Vercel deployment adapter for API plus static UI routing
@@ -19,8 +23,9 @@ Data flow:
 1. Model is trained from synthetic data using ml/train_model.py
 2. Backend loads model artifact at startup
 3. Simulator or dashboard sends sensor readings to POST /predict
-4. Backend stores prediction history in DB
-5. Dashboard fetches GET /history for live cards and chart
+4. CSV datasets can be sent to POST /predict/batch for batch scoring
+5. Backend stores prediction history in DB (single predictions, or batch if persist=true)
+6. Dashboard fetches GET /history for live cards, analytics, and alerts
 
 ## Repository Structure
 
@@ -117,6 +122,10 @@ If DATABASE_URL is not set, backend falls back to local SQLite path.
   - Returns auth_required for frontend runtime behavior
 - POST /predict
   - Predicts risk and stores reading
+- POST /predict/batch
+  - Runs batch predictions from an array of sensor rows
+  - Returns risk distribution plus per-row results
+  - Supports optional persistence with persist=true
 - GET /history?limit=25
   - Returns latest prediction records
 
@@ -128,6 +137,27 @@ Sample predict request body:
   "temperature": 78.2,
   "vibration": 2.4,
   "pressure": 31.5
+}
+```
+
+Sample batch predict request body:
+
+```json
+{
+  "persist": false,
+  "rows": [
+    {
+      "machine_id": "M-201",
+      "temperature": 81.4,
+      "vibration": 3.1,
+      "pressure": 34.6
+    },
+    {
+      "temperature": 99.8,
+      "vibration": 7.2,
+      "pressure": 42.1
+    }
+  ]
 }
 ```
 

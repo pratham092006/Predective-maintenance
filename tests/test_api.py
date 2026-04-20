@@ -43,6 +43,47 @@ def test_predict_and_history_roundtrip(tmp_path: Path) -> None:
         db.DB_PATH = original_db_path
 
 
+def test_batch_predict_contract(tmp_path: Path) -> None:
+    original_db_path = db.DB_PATH
+    db.DB_PATH = tmp_path / "test_predictive_maintenance_batch.db"
+
+    training_data = create_training_dataset(n_samples=400, machine_count=3, seed=29)
+    model, _ = train_random_forest(training_data)
+
+    try:
+        with TestClient(api_main.app) as client:
+            api_main.MODEL = model
+            response = client.post(
+                "/predict/batch",
+                json={
+                    "persist": False,
+                    "rows": [
+                        {
+                            "machine_id": "M-201",
+                            "temperature": 76.4,
+                            "vibration": 3.2,
+                            "pressure": 33.1,
+                        },
+                        {
+                            "temperature": 102.2,
+                            "vibration": 8.1,
+                            "pressure": 44.9,
+                        },
+                    ],
+                },
+            )
+
+            assert response.status_code == 200
+            payload = response.json()
+            assert payload["total_records"] == 2
+            assert set(payload["risk_distribution"].keys()) == {"safe", "warning", "critical"}
+            assert len(payload["results"]) == 2
+            assert payload["results"][1]["machine_id"].startswith("BATCH-")
+            assert 0.0 <= float(payload["results"][0]["probability"]) <= 1.0
+    finally:
+        db.DB_PATH = original_db_path
+
+
 def test_client_config_endpoint_contract() -> None:
     with TestClient(api_main.app) as client:
         response = client.get("/client-config")
