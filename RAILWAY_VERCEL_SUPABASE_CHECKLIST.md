@@ -19,6 +19,12 @@ Reference policy and full commands: [DEPLOYMENT.md](DEPLOYMENT.md)
 - LOG_LEVEL=INFO
 - API_KEY=<strong-random-secret> (optional)
 
+## Railway Service Runtime
+
+- Start command is set to: python -m backend.run_backend
+- Service binds Railway PORT automatically (handled by backend.run_backend)
+- Dockerfile path is set to: backend/Dockerfile (or RAILWAY_DOCKERFILE_PATH=backend/Dockerfile)
+
 ## Frontend Wiring
 
 - Set API Base URL to <BACKEND_URL> in UI and click Save

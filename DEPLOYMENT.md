@@ -105,6 +105,15 @@ Backend on Railway:
 - Build from repository root using backend container setup
 - Set env vars from the Environment Variables section above
 - Use MODEL_PATH=/app/ml/model.pkl in containerized Railway runtime
+- Use a PORT-aware start command so Railway can bind correctly:
+
+```text
+python -m backend.run_backend
+```
+
+- If Railway cannot detect startup or Dockerfile location, set service config explicitly:
+	- Start command: python -m backend.run_backend
+	- Dockerfile path: backend/Dockerfile (or set RAILWAY_DOCKERFILE_PATH=backend/Dockerfile)
 
 Frontend on Vercel:
 

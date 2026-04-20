@@ -19,6 +19,19 @@ For complete deployment policy and troubleshooting, see [DEPLOYMENT.md](DEPLOYME
 - LOG_LEVEL=INFO
 - API_KEY=<strong-random-secret> (optional)
 
+## Railway Runtime Command
+
+Use a PORT-aware startup command:
+
+```text
+python -m backend.run_backend
+```
+
+If Railway does not auto-detect startup or Dockerfile path, set explicitly:
+
+- Start command: python -m backend.run_backend
+- Dockerfile path: backend/Dockerfile (or RAILWAY_DOCKERFILE_PATH=backend/Dockerfile)
+
 ## Frontend Wiring
 
 Set backend URL in dashboard settings, or share prewired link:
