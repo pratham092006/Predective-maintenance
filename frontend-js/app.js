@@ -198,10 +198,14 @@ function applyConfig(config) {
 
 function setView(viewName) {
   els.navItems.forEach((item) => {
-    item.classList.toggle("active", item.dataset.view === viewName);
+    const isActive = item.dataset.view === viewName;
+    item.classList.toggle("active", isActive);
+    item.setAttribute("aria-pressed", String(isActive));
   });
   els.views.forEach((view) => {
-    view.classList.toggle("active", view.id === `view-${viewName}`);
+    const isActive = view.id === `view-${viewName}`;
+    view.classList.toggle("active", isActive);
+    view.hidden = !isActive;
   });
   els.viewTitle.textContent = viewTitles[viewName] || "Live Monitoring";
 

@@ -24,19 +24,19 @@
       </div>
 
       <nav class="nav-stack" aria-label="Application navigation">
-        <button class="nav-item active" data-view="live-monitoring" type="button">
+        <button class="nav-item active" data-view="live-monitoring" type="button" aria-controls="view-live-monitoring" aria-pressed="true">
           <span class="material-symbols-rounded" aria-hidden="true">monitoring</span>
           <span>Live Monitoring</span>
         </button>
-        <button class="nav-item" data-view="manual-prediction" type="button">
+        <button class="nav-item" data-view="manual-prediction" type="button" aria-controls="view-manual-prediction" aria-pressed="false">
           <span class="material-symbols-rounded" aria-hidden="true">model_training</span>
           <span>Manual Prediction</span>
         </button>
-        <button class="nav-item" data-view="upload-dataset" type="button">
+        <button class="nav-item" data-view="upload-dataset" type="button" aria-controls="view-upload-dataset" aria-pressed="false">
           <span class="material-symbols-rounded" aria-hidden="true">upload_file</span>
           <span>Upload Dataset</span>
         </button>
-        <button class="nav-item" data-view="machine-analytics" type="button">
+        <button class="nav-item" data-view="machine-analytics" type="button" aria-controls="view-machine-analytics" aria-pressed="false">
           <span class="material-symbols-rounded" aria-hidden="true">analytics</span>
           <span>Machine Analytics</span>
         </button>
@@ -60,7 +60,7 @@
           <button id="healthCheckBtn" class="btn-secondary" type="button">Health</button>
         </div>
 
-        <div id="connectionBadge" class="status-badge idle">Not connected</div>
+        <div id="connectionBadge" class="status-badge idle" aria-live="polite">Not connected</div>
       </section>
     </aside>
 
@@ -177,7 +177,7 @@
         </section>
       </section>
 
-      <section id="view-manual-prediction" class="view" aria-label="Manual prediction">
+      <section id="view-manual-prediction" class="view" aria-label="Manual prediction" hidden>
         <div class="dual-grid">
           <section class="panel glass">
             <div class="panel-heading">
@@ -218,22 +218,23 @@
         </div>
       </section>
 
-      <section id="view-upload-dataset" class="view" aria-label="Upload dataset">
+      <section id="view-upload-dataset" class="view" aria-label="Upload dataset" hidden>
         <section class="panel glass">
           <div class="panel-heading">
             <h2>Upload Dataset</h2>
             <span class="material-symbols-rounded" aria-hidden="true">dataset</span>
           </div>
-          <p class="helper-text">Upload a CSV with columns temperature, vibration, pressure (machine_id optional).</p>
+          <p id="uploadHelper" class="helper-text">Upload a CSV with columns temperature, vibration, pressure (machine_id optional).</p>
 
           <div class="upload-controls">
-            <input id="csvFileInput" type="file" accept=".csv,text/csv">
+            <label for="csvFileInput">CSV File</label>
+            <input id="csvFileInput" type="file" accept=".csv,text/csv" aria-describedby="uploadHelper uploadStatus uploadError">
             <button id="runBatchBtn" class="btn-primary" type="button" disabled>Run Batch Prediction</button>
             <button id="downloadResultsBtn" class="btn-secondary" type="button" disabled>Download Results CSV</button>
           </div>
 
-          <p id="uploadStatus" class="helper-text">No file selected.</p>
-          <p id="uploadError" class="error-text" role="alert"></p>
+          <p id="uploadStatus" class="helper-text" aria-live="polite">No file selected.</p>
+          <p id="uploadError" class="error-text" role="alert" aria-live="assertive"></p>
         </section>
 
         <div class="dual-grid">
@@ -278,7 +279,7 @@
         </section>
       </section>
 
-      <section id="view-machine-analytics" class="view" aria-label="Machine analytics">
+      <section id="view-machine-analytics" class="view" aria-label="Machine analytics" hidden>
         <section class="panel glass">
           <div class="panel-heading">
             <h2>Machine Analytics</h2>
