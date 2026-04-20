@@ -43,6 +43,8 @@ const state = {
   uploadResults: [],
   autoRefreshTimer: null,
   authRequired: false,
+  historyFingerprint: "",
+  fetchInFlight: false,
 };
 
 const viewTitles = {
@@ -202,6 +204,36 @@ function setView(viewName) {
     view.classList.toggle("active", view.id === `view-${viewName}`);
   });
   els.viewTitle.textContent = viewTitles[viewName] || "Live Monitoring";
+
+  // Render only the visible heavy view to reduce chart churn and flicker.
+  if (viewName === "live-monitoring") {
+    renderLiveView();
+  } else if (viewName === "machine-analytics") {
+    renderAnalyticsView();
+  }
+}
+
+function buildHistoryFingerprint(rows) {
+  if (!rows.length) {
+    return "0";
+  }
+
+  const newest = rows[0];
+  const oldest = rows[rows.length - 1];
+  return `${rows.length}:${newest.timestamp || ""}:${newest.machine_id || ""}:${oldest.timestamp || ""}`;
+}
+
+function renderVisibleViews() {
+  const liveIsVisible = document.getElementById("view-live-monitoring")?.classList.contains("active");
+  const analyticsIsVisible = document.getElementById("view-machine-analytics")?.classList.contains("active");
+
+  if (liveIsVisible) {
+    renderLiveView();
+  }
+
+  if (analyticsIsVisible) {
+    renderAnalyticsView();
+  }
 }
 
 function configureAutoRefresh() {
@@ -309,6 +341,10 @@ async function checkHealth() {
 }
 
 async function fetchHistoryAndRender({ force = false } = {}) {
+  if (state.fetchInFlight) {
+    return;
+  }
+
   if (state.authRequired && !api.apiKey) {
     if (force) {
       showToast("API key is required for this deployment.", 3200);
@@ -316,13 +352,22 @@ async function fetchHistoryAndRender({ force = false } = {}) {
     return;
   }
 
+  state.fetchInFlight = true;
+
   try {
     const rows = await api.getHistory(400);
-    state.history = Array.isArray(rows) ? rows : [];
+    const nextRows = Array.isArray(rows) ? rows : [];
+    const nextFingerprint = buildHistoryFingerprint(nextRows);
+
+    if (!force && nextFingerprint === state.historyFingerprint) {
+      return;
+    }
+
+    state.history = nextRows;
+    state.historyFingerprint = nextFingerprint;
 
     updateCommonSelectors(state.history);
-    renderLiveView();
-    renderAnalyticsView();
+    renderVisibleViews();
   } catch (error) {
     if (error instanceof ApiError && error.status === 401) {
       setConnectionBadge("error", "Unauthorized. Update API key.");
@@ -332,6 +377,8 @@ async function fetchHistoryAndRender({ force = false } = {}) {
 
     const message = error instanceof Error ? error.message : "Unable to fetch history.";
     showToast(message, 3200);
+  } finally {
+    state.fetchInFlight = false;
   }
 }
 
