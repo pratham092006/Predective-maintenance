@@ -174,9 +174,9 @@ export function renderHeatmap(containerElement, machineSummaries) {
       x: labels,
       y: ["Temperature", "Vibration", "Pressure", "Failure %"],
       colorscale: [
-        [0, "#35d18f"],
-        [0.5, "#f4c44c"],
-        [1, "#ff5f5f"],
+        [0, "#58c88f"],
+        [0.5, "#e6b466"],
+        [1, "#e8797f"],
       ],
       showscale: false,
     },
@@ -186,7 +186,7 @@ export function renderHeatmap(containerElement, machineSummaries) {
     paper_bgcolor: "rgba(0,0,0,0)",
     plot_bgcolor: "rgba(0,0,0,0)",
     margin: { l: 90, r: 10, t: 10, b: 40 },
-    font: { color: "#d8e5f2", family: "Outfit" },
+    font: { color: "#2f3748", family: "Manrope" },
   };
 
   Plotly.react(containerElement, data, layout, {
@@ -208,14 +208,14 @@ export function renderConfidenceGauge(containerElement, probability) {
       type: "indicator",
       mode: "gauge+number",
       value,
-      number: { suffix: "%", font: { color: "#e4eef7" } },
+      number: { suffix: "%", font: { color: "#1f2937" } },
       gauge: {
-        axis: { range: [0, 100], tickcolor: "#95aeca" },
-        bar: { color: "#43c0ff" },
+        axis: { range: [0, 100], tickcolor: "#81889a", tickfont: { color: "#81889a" } },
+        bar: { color: "#1f9e9b" },
         steps: [
-          { range: [0, 30], color: "rgba(53, 209, 143, 0.22)" },
-          { range: [30, 70], color: "rgba(244, 196, 76, 0.22)" },
-          { range: [70, 100], color: "rgba(255, 95, 95, 0.22)" },
+          { range: [0, 30], color: "rgba(88, 200, 143, 0.2)" },
+          { range: [30, 70], color: "rgba(230, 180, 102, 0.2)" },
+          { range: [70, 100], color: "rgba(232, 121, 127, 0.2)" },
         ],
       },
     },
@@ -224,7 +224,7 @@ export function renderConfidenceGauge(containerElement, probability) {
   const layout = {
     paper_bgcolor: "rgba(0,0,0,0)",
     margin: { l: 20, r: 20, t: 20, b: 10 },
-    font: { color: "#d8e5f2", family: "Outfit" },
+    font: { color: "#2f3748", family: "Manrope" },
   };
 
   Plotly.react(containerElement, data, layout, {

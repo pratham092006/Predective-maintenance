@@ -139,7 +139,7 @@ function loadConfig() {
   const fallback = {
     apiBase: inferDefaultApiBase(),
     apiKey: "",
-    intervalMs: "4000",
+    intervalMs: "5000",
     autoRefresh: true,
   };
 
@@ -183,7 +183,7 @@ function currentConfig() {
   return {
     apiBase: normalizeApiBase(els.apiBaseInput.value),
     apiKey: String(els.apiKeyInput.value || "").trim(),
-    intervalMs: String(els.refreshIntervalSelect.value || "4000"),
+    intervalMs: String(els.refreshIntervalSelect.value || "5000"),
     autoRefresh: Boolean(els.autoRefreshToggle.checked),
   };
 }
@@ -243,9 +243,10 @@ function configureAutoRefresh() {
   }
 
   const intervalMs = Number(els.refreshIntervalSelect.value) || 4000;
+  const safeIntervalMs = Math.max(intervalMs, 5000);
   state.autoRefreshTimer = window.setInterval(() => {
     fetchHistoryAndRender();
-  }, intervalMs);
+  }, safeIntervalMs);
 }
 
 function updateCommonSelectors(historyRows) {
