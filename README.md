@@ -236,6 +236,11 @@ If a secret was ever committed:
 - RAILWAY_VERCEL_SUPABASE_DEPLOYMENT.md (topology quick start)
 - RAILWAY_VERCEL_SUPABASE_CHECKLIST.md (execution checklist)
 
+Current Vercel deployment link:
+
+- Dashboard: https://predictive-maintenance-api.vercel.app/ui
+- API health: https://predictive-maintenance-api.vercel.app/
+
 Recommended production topology:
 
 - Frontend: Vercel static hosting

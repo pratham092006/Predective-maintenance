@@ -158,6 +158,21 @@ function loadConfig() {
   }
 }
 
+function applyUrlOverrides(config) {
+  const params = new URLSearchParams(window.location.search);
+  const queryApiBase = normalizeApiBase(params.get("apiBase"));
+  const rawApiKey = params.get("apiKey");
+
+  const overrides = {
+    ...config,
+    apiBase: queryApiBase || config.apiBase,
+    apiKey: rawApiKey === null ? config.apiKey : String(rawApiKey).trim(),
+  };
+
+  const changed = overrides.apiBase !== config.apiBase || overrides.apiKey !== config.apiKey;
+  return { config: overrides, changed };
+}
+
 function saveConfig(config) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
 }
@@ -525,8 +540,12 @@ function wireEvents() {
 }
 
 async function boot() {
-  const config = loadConfig();
+  const loadedConfig = loadConfig();
+  const { config, changed } = applyUrlOverrides(loadedConfig);
   applyConfig(config);
+  if (changed) {
+    saveConfig(config);
+  }
   setView("live-monitoring");
   wireEvents();
 

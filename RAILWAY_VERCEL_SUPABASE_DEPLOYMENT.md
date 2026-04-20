@@ -27,6 +27,12 @@ Set backend URL in dashboard settings, or share prewired link:
 https://<frontend-domain>/?apiBase=https://<railway-backend-domain>
 ```
 
+If using the backend-hosted dashboard route (`/ui`) instead of a separate static frontend:
+
+```text
+https://<railway-backend-domain>/ui?apiBase=https://<railway-backend-domain>
+```
+
 ## Quick Verification
 
 ```powershell

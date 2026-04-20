@@ -80,6 +80,10 @@ vercel
 vercel --prod
 ```
 
+Current dashboard link for this project:
+
+- https://predictive-maintenance-api.vercel.app/ui
+
 Set Vercel environment variables:
 
 - APP_ENV=production
@@ -109,6 +113,12 @@ Frontend on Vercel:
 
 ```text
 https://<frontend-domain>/?apiBase=https://<railway-backend-domain>
+```
+
+If you are using the built-in backend dashboard route instead of a separate static frontend, use:
+
+```text
+https://<railway-backend-domain>/ui?apiBase=https://<railway-backend-domain>
 ```
 
 Supabase:

@@ -22,10 +22,16 @@ Reference policy and full commands: [DEPLOYMENT.md](DEPLOYMENT.md)
 ## Frontend Wiring
 
 - Set API Base URL to <BACKEND_URL> in UI and click Save
-- Or use:
+- Or use (static frontend deployment):
 
 ```text
 <FRONTEND_URL>/?apiBase=<BACKEND_URL>
+```
+
+- Or use (backend-hosted dashboard):
+
+```text
+<BACKEND_URL>/ui?apiBase=<BACKEND_URL>
 ```
 
 ## Smoke Tests
